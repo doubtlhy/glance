@@ -3,15 +3,20 @@ package reader
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 type TxtReader struct {
-	content []string
-	pos     int
+	content  []string
+	pos      int
+	filePath string
 }
 
 func NewTxtReader() *TxtReader {
@@ -22,6 +27,8 @@ func (txt *TxtReader) Load(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return err
 	}
+
+	txt.filePath = path
 
 	cmd := exec.Command("fold", "-w", "80", "-s", path)
 	stdout, err := cmd.StdoutPipe()
@@ -59,7 +66,39 @@ func (txt *TxtReader) Load(path string) error {
 	}
 
 	txt.pos = 0
+	txt.loadProgress()
 	return nil
+}
+
+func (txt *TxtReader) getProgressFile() string {
+	hash := md5.Sum([]byte(txt.filePath))
+	hashStr := hex.EncodeToString(hash[:])
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".glance", hashStr+".progress")
+}
+
+func (txt *TxtReader) SaveProgress() error {
+	progressFile := txt.getProgressFile()
+	dir := filepath.Dir(progressFile)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(progressFile, []byte(strconv.Itoa(txt.pos)), 0644)
+}
+
+func (txt *TxtReader) loadProgress() {
+	progressFile := txt.getProgressFile()
+	data, err := os.ReadFile(progressFile)
+	if err != nil {
+		return
+	}
+	pos, err := strconv.Atoi(string(data))
+	if err != nil {
+		return
+	}
+	if pos >= 0 && pos < len(txt.content) {
+		txt.pos = pos
+	}
 }
 
 func (txt *TxtReader) Current() string {

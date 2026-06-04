@@ -1,6 +1,8 @@
 package core
 
 import (
+	"log"
+
 	"github.com/TimothyYe/glance/lib"
 	ui "github.com/gizak/termui/v3"
 )
@@ -25,7 +27,10 @@ func handleEvents() {
 			// boss key
 			displayBossKey(r.Current())
 		case "q", "<C-c>":
-			// quit
+			// quit and save progress
+			if err := r.SaveProgress(); err != nil {
+				log.Printf("Failed to save progress: %v", err)
+			}
 			return
 		case "<C-n>":
 			// show the next content
