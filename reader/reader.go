@@ -10,4 +10,5 @@ type Reader interface {
 	CurrentPos() int
 	Goto(pos int) string
 	GetProgress() string
+	SaveProgress() error
 }
